@@ -1,37 +1,47 @@
-## Welcome to GitHub Pages
+# Shell lab实验记录
 
-You can use the [editor on GitHub](https://github.com/AmaIIl/shell-lab/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
-
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
-
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+在看视频的时候对进程和信号之间的原理有了更深的理解，但是还有一些不太懂的地方，希望通过这个实验去查漏补缺。  
+实验需要补全未实现的代码，完成实验后就可以实现一个shell程序，需要补全的函数如下所示
 ```
+eval: 主要功能是解析cmdline，并且运行. [70 lines]
+builtin cmd: 辨识和解析出bulidin命令: quit, fg, bg, and jobs. [25lines]
+do bgfg: 实现bg和fg命令. [50 lines] 
+waitfg: 实现等待前台程序运行结束. [20 lines]
+sigchld handler: 响应SIGCHLD. 80 lines]
+sigint handler: 响应 SIGINT (ctrl-c) 信号. [15 lines] 
+sigtstp handler: 响应 SIGTSTP (ctrl-z) 信号. [15 lines]
+```
+## eval
+在视频的ppt中有给出eval代码的原型
+```
+void eval(char *cmdline)
+{
+    char *argv[MAXARGS]; 
+    char buf[MAXLINE];
+    int bg;
+    pid_t pid;
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+    strcpy(buf, cmdline);
+    bg = parseline(buf, argv);
+    if (argv[0] == NULL)
+        return;
 
-### Jekyll Themes
+    if (!builtin_command(argv)) {
+        if ((pid = Fork()) == 0) {
+            if (execve(argv[0], argv, environ) < 0) {
+                printf("%s: Command not found.\n", argv[0]);
+                exit(0);
+            }
+        }
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/AmaIIl/shell-lab/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+        if (!bg) {
+            int status;
+            if (waitpid(pid, &status, 0) < 0)
+                unix_error("waitfg: waitpid erroe");
+        }
+        else
+            printf("%d %s", pid, cmdline);
+    }
+    return;
+}
+```
