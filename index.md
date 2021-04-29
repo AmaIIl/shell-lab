@@ -3,13 +3,13 @@
 在看视频的时候对进程和信号之间的原理有了更深的理解，但是还有一些不太懂的地方，希望通过这个实验去查漏补缺。  
 实验需要补全未实现的代码，完成实验后就可以实现一个shell程序，需要补全的函数如下所示
 ```
-eval: 主要功能是解析cmdline，并且运行. [70 lines]
-builtin cmd: 辨识和解析出bulidin命令: quit, fg, bg, and jobs. [25lines]
-do bgfg: 实现bg和fg命令. [50 lines] 
-waitfg: 实现等待前台程序运行结束. [20 lines]
-sigchld handler: 响应SIGCHLD. 80 lines]
-sigint handler: 响应 SIGINT (ctrl-c) 信号. [15 lines] 
-sigtstp handler: 响应 SIGTSTP (ctrl-z) 信号. [15 lines]
+eval: 对输入命令进行判断和执行
+builtin_cmd: 检查是否为内置指令，是则直接执行
+do_bgfg: 执行fg和bg指令
+waitfg: 等待fg指令执行完毕
+sigchld_handler: SIGCHLD信号处理函数
+sigint_handler: SIGINT信号处理函数
+sigtstp_handler: SIGTSTP信号处理函数
 ```
 ## eval
 在视频的ppt中有给出eval代码的原型
@@ -45,3 +45,4 @@ void eval(char *cmdline)
     return;
 }
 ```
+
