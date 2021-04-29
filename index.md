@@ -12,7 +12,6 @@ sigint_handler: SIGINT信号处理函数
 sigtstp_handler: SIGTSTP信号处理函数
 ```
 ## eval
-在视频的ppt中有给出eval代码的原型
 ```
 void eval(char *cmdline)
 {
@@ -26,7 +25,7 @@ void eval(char *cmdline)
     if (argv[0] == NULL)
         return;
 
-    if (!builtin_command(argv)) {
+    if (!builtin_cmd(argv)) {
         if ((pid = Fork()) == 0) {
             if (execve(argv[0], argv, environ) < 0) {
                 printf("%s: Command not found.\n", argv[0]);
@@ -45,4 +44,40 @@ void eval(char *cmdline)
     return;
 }
 ```
+上面这个是eval函数的原型，其会先对我们输入的命令进行判断是否为空和是否为内置函数，若是空则返回空，若不是内置函数则在子进程中调用execve函数。当execve返回-1（即报错）时，输出报错语句并退出。
+若子进程中的命令顺利执行则继续判断前后台作业，前台作业则需要等待其执行完毕，后台作业则不需要等待。  
+但是其本身并没有处理僵尸进程的功能，后续可以在其基础上对我们代码进行修改。   
+其中Fork函数可以在csapp.c中找到，在这里大写开头的函数都是对原函数的所作的error处理  
+```
+pid_t Fork(void) 
+{
+    pid_t pid;
 
+    if ((pid = fork()) < 0)
+    unix_error("Fork error");
+    return pid;
+}
+```
+builtin_cmd命令中我们需要设置内置函数"quit", "jobs", "fg"和"bg", 特别的对于&命令则不做特别处理(return 1)  
+```
+int builtin_cmd(char **argv) 
+{
+    if (!strcmp(argv[0], "quit"))
+        exit(0);
+    if (!strcmp(argv[0], "jobs")) {
+        listjobs(jobs);
+        return 1;
+    }
+    if (!strcmp(argv[0], "bg")||!strcmp(argv[0], "fg")) {
+        do_bgfg(argv);
+        return 1;
+    }
+    if (!strcmp(argv[0], "&"))
+        return 1;
+    return 0;     /* not a builtin command */
+}
+```
+do_bgfg函数实现了bg与fg的功能  
+```
+
+```
