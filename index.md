@@ -39,13 +39,17 @@ int sigpromask(int how, const sigset_t *set, sigset_t *oset)：该函数可以�
     3、SIG_UNBLOCK     从信号屏蔽字中删除参数set中的信号
     
 临时阻塞一个信号的办法(SIGINT)：
-sigset_t mask, prev_mask;
+	sigset_t mask, prev_mask;
 
-Sigemptyset(&mask);
-Sigaddset(&mask, SIGINT);
+	Sigemptyset(&mask);
+	Sigaddset(&mask, SIGINT);
 
-Sigprocmask(SIG_BLOCK, &mask, &prev_mask);
-SIgprocmask(SIG_SETMASK, &prev_mask, NULL);
+	Sigprocmask(SIG_BLOCK, &mask, &prev_mask);
+	SIgprocmask(SIG_SETMASK, &prev_mask, NULL);
+
+父进程在一个全局作业列表中记录着它的当前子进程，addjob和deletejob分别向这个作业列表中添加和从中删除作业。
+正确的顺序：父进程将子进程添加入作业表中，当子进程结束后将其从作业表中删除
+
 ```
 
 ## main
