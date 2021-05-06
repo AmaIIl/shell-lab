@@ -29,7 +29,7 @@ SIGTSTP：停止进程的运行(Ctrl+Z)
 SIGCHLD：父进程回收子进程的信号
 
 int sigemptyset(sigset_t *set): 信号集初始化为空
-int sigfillset(sigset_t *set)：把信号集初始化包含所有已定义的信号
+int sigfillset(sigset_t *set)：把每个信号都添加到set中
 int sigaddset(sigset_t *set, int signo)：把信号signo添加到信号集set中，成功时返回0，失败时返回-1
 int sigdelset(sigset_t *set, int signo)：把信号signo从信号集set中删除，成功时返回0，失败时返回-1
 int sigismember(sigset_t *set, int signo)：判断给定的信号signo是否是信号集中的一个成员，如果是返回1，如果不是，返回0，如果给定的信号无效，返回-1
@@ -37,6 +37,15 @@ int sigpromask(int how, const sigset_t *set, sigset_t *oset)：该函数可以�
     1、SIG_BLOCK       把参数set中的信号添加到信号屏蔽字中
     2、SIG_SETMASK     把信号屏蔽字设置为参数set中的信号
     3、SIG_UNBLOCK     从信号屏蔽字中删除参数set中的信号
+    
+临时阻塞一个信号的办法(SIGINT)：
+sigset_t mask, prev_mask;
+
+Sigemptyset(&mask);
+Sigaddset(&mask, SIGINT);
+
+Sigprocmask(SIG_BLOCK, &mask, &prev_mask);
+SIgprocmask(SIG_SETMASK, &prev_mask, NULL);
 ```
 
 ## main
