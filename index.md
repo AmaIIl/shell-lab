@@ -1,7 +1,7 @@
 # Shell lab实验记录
 
 在看视频的时候对进程和信号之间的原理有了更深的理解，但是还有一些不太懂的地方，希望通过这个实验去查漏补缺。  
-实验需要补全未实现的代码，完成实验后就可以实现一个shell程序，需要补全的函数如下所示
+实验需要补全未实现的代码，完成实验后就可以实现一个简易的shell程序，需要补全的函数如下所示
 ```
 eval: 对输入命令进行判断和执行
 builtin_cmd: 检查是否为内置指令，是则直接执行
@@ -23,6 +23,7 @@ init进程的pid为1，是所有进程的祖先，负责回收僵尸进程
 fork调用一次返回两次，execve调用一次不返回
 
 SIGINT： 通知前台进程终止进程(Ctrl+C)
+SIGCONT: 继续执行一个停止的进程(kill)
 SIGQUIT：与SIGINT类似，但是由QUIT字符控制(Ctrl-\)，进程在收到SIGQUIT信号时会产生core文件
 SIGTSTP：停止进程的运行(Ctrl+Z)
 SIGCHLD：父进程回收子进程的信号
@@ -38,76 +39,109 @@ int sigpromask(int how, const sigset_t *set, sigset_t *oset)：该函数可以�
     3、SIG_UNBLOCK     从信号屏蔽字中删除参数set中的信号
 ```
 
+## main
+```
+int main(int argc, char **argv) 
+{
+    char c;
+    char cmdline[MAXLINE];//最长存储1024字节
+    int emit_prompt = 1; //发出提示(默认)
+
+    /* Redirect stderr to stdout (so that driver will get all output
+     * on the pipe connected to stdout) */
+    dup2(1, 2);//复制文件描述符
+
+    /*分析命令行*/
+    while ((c = getopt(argc, argv, "hvp")) != EOF) {
+        switch (c) {
+        case 'h':             /* 选择h则输出帮助内容 */
+            usage();
+	    break;
+        case 'v':             /* emit additional diagnostic info */
+            verbose = 1;
+	    break;
+        case 'p':             /* 不打印提示 */
+            emit_prompt = 0;  /* handy for automatic testing */
+	    break;
+	default:
+            usage();
+	}
+    }
+
+    /* Install the signal handlers */
+
+    /* shell对于ctrl-c, ctrl-z和SIGCHLD信号的接收以及反应 */
+    Signal(SIGINT,  sigint_handler);   /* ctrl-c */
+    Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
+    Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
+
+    /* 杀死shell进程 */
+    Signal(SIGQUIT, sigquit_handler); 
+
+    /* 初始化job列表 */
+    initjobs(jobs);
+
+    /* 执行shell的read/eval循环 */
+    while (1) {
+
+	/* Read command line */
+	if (emit_prompt) {
+	    printf("%s", prompt);
+	    fflush(stdout);
+	}
+	if ((fgets(cmdline, MAXLINE, stdin) == NULL) && ferror(stdin))
+	    app_error("fgets error");
+	if (feof(stdin)) { /*对于shell而言命令行的结尾是ctrl-d*/
+	    fflush(stdout);
+	    exit(0);
+	}
+
+	/* Evaluate the command line */
+	eval(cmdline);
+	fflush(stdout);
+	fflush(stdout);
+    } 
+
+    exit(0); /* control never reaches here */
+}
+```
+在main函数中主要是对于命令行的解析、对ctrl-c/z的处理以及初始化job列表等操作
+
 ## eval
 ```
-void eval(char *cmdline)
+void eval(char *cmdline) 
 {
-    char *argv[MAXARGS]; 
+    char *argv[MAXARGS];
     char buf[MAXLINE];
     int bg;
     pid_t pid;
 
     strcpy(buf, cmdline);
-    bg = parseline(buf, argv);
-    if (argv[0] == NULL)
+    bg = parseline(buf, argv);//解析命令行为一个数组，其中argv[0]是命令，argv[1]后面的是参数，当shell的命令以一个&结尾，则允许shell在后台运行此作业并无需等待其完成
+    if (argb[0] == NULL)//得到空行
         return;
 
-    if (!builtin_cmd(argv)) {
-        if ((pid = Fork()) == 0) {
-            if (execve(argv[0], argv, environ) < 0) {
+    if (!builtin_cmd(argv))//检测是否为内建命令，如果是则直接执行，若不是则意味着我们要求shell执行一些程序
+    {
+        if ((pid = Fork()) == 0)//子进程
+        {
+            if (execve(argv[0], argv, environ) < 0)//子进程调用execve函数，当execve有返回值的时候总是会返回-1(即出错)
+            {
                 printf("%s: Command not found.\n", argv[0]);
                 exit(0);
             }
         }
-
-        if (!bg) {
+        //当父进程获得使用权时候
+        if (!bg)//如果不是一个后台进程
+        {
             int status;
-            if (waitpid(pid, &status, 0) < 0)
-                unix_error("waitfg: waitpid erroe");
+            if (waitpid(pid, &status, 0) < 0)//通过调用waitpid函数等待前台进程结束并回收
+                unix_error("waitfg: waitpid error");
         }
-        else
+        else//如果是一个后台进程则无需等待
             printf("%d %s", pid, cmdline);
     }
     return;
 }
 ```
-上面这个是eval函数的原型，其会先对我们输入的命令进行判断是否为空和是否为内置函数，若是空则返回空，若不是内置函数则在子进程中调用execve函数。当execve返回-1（即报错）时，输出报错语句并退出。
-若子进程中的命令顺利执行则继续判断前后台作业，前台作业则需要等待其执行完毕，后台作业则不需要等待。  
-但是其本身并没有处理僵尸进程的功能，后续可以在其基础上对我们代码进行修改。 
-## Fork
-Fork函数可以在csapp.c中找到，在这里大写开头的函数都是对原函数的所作的error处理  
-```
-pid_t Fork(void) 
-{
-    pid_t pid;
-
-    if ((pid = fork()) < 0)
-    unix_error("Fork error");
-    return pid;
-}
-```
-## builtin_cmd
-builtin_cmd命令中我们需要设置内置函数"quit", "jobs", "fg"和"bg", 特别的对于&命令则不做特别处理(return 1)  
-```
-int builtin_cmd(char **argv) 
-{
-    if (!strcmp(argv[0], "quit"))
-        exit(0);
-    if (!strcmp(argv[0], "jobs")) {
-        listjobs(jobs);
-        return 1;
-    }
-    if (!strcmp(argv[0], "bg")||!strcmp(argv[0], "fg")) {
-        do_bgfg(argv);
-        return 1;
-    }
-    if (!strcmp(argv[0], "&"))
-        return 1;
-    return 0;     /* not a builtin command */
-}
-```
-## do_bgfg
-do_bgfg函数实现了bg与fg的功能  
-```
-
-```
+csapp公开课上给出的eval函数原型
