@@ -21,7 +21,15 @@ pid_t在types.h中被定义为int
 init进程的pid为1，是所有进程的祖先，负责回收僵尸进程
 一个进程可以调用waitpid函数来等待他的子进程终止或停止
 fork调用一次返回两次，execve调用一次不返回
-
+int sigemptyset(sigset_t *set): 信号集初始化为空
+int sigfillset(sigset_t *set)：把信号集初始化包含所有已定义的信号
+int sigaddset(sigset_t *set, int signo)：把信号signo添加到信号集set中，成功时返回0，失败时返回-1
+int sigdelset(sigset_t *set, int signo)：把信号signo从信号集set中删除，成功时返回0，失败时返回-1
+int sigismember(sigset_t *set, int signo)：判断给定的信号signo是否是信号集中的一个成员，如果是返回1，如果不是，返回0，如果给定的信号无效，返回-1
+int sigpromask(int how, const sigset_t *set, sigset_t *oset)：该函数可以根据参数指定的方法修改进程的信号屏蔽字，how的具体参数如下所示
+    1、SIG_BLOCK       把参数set中的信号添加到信号屏蔽字中
+    2、SIG_SETMASK     把信号屏蔽字设置为参数set中的信号
+    3、SIG_UNBLOCK     从信号屏蔽字中删除参数set中的信号
 ```
 
 ## eval
