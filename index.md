@@ -152,8 +152,50 @@ void eval(char *cmdline)
     return;
 }
 ```
-csapp书上的p525页给出的eval函数原型，但是其中并没有回收后台进程的操作，
+csapp书上的p525页给出的eval函数原型，但是其中并没有回收后台进程的操作，通过对信号的学习了解到可以通过对SIG_CHLD进行操作来完成僵尸进程的回收
+根据书上p542页的内容修改后的代码
+```
+void eval(char *cmdline) 
+{
+    char *argv[MAXARGS];
+    char buf[MAXLINE];
+    int bg;
+    pid_t pid;
+    sigset_t mask, prev_mask;
 
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+
+    strcpy(buf, cmdline);
+    bg = parseline(buf, argv);
+    if (argv[0] == NULL)
+        return;
+
+    if (!builtin_cmd(argv))
+    {
+        sigprocmask(SIG_BLOCK, &mask, &prev_mask);//阻塞信号
+        if ((pid = Fork()) == 0)
+        {
+            sigprocmask(SIG_SETMASK, &prev_mask, NULL);//子进程停止阻塞
+            if (execve(argv[0], argv, environ) < 0)
+            {
+                printf("%s: Command not found.\n", argv[0]);
+                exit(0);
+            }
+        }
+        sigprocmask(SIG_SETMASK, &prev_mask, NULL);//父进程停止阻塞
+        if (!bg)
+        {
+            int status;
+            if (waitpid(pid, &status, 0) < 0)
+                unix_error("waitfg: waitpid error");
+        }
+        else
+            printf("%d %s", pid, cmdline);
+    }
+    return;
+}
+```
 ## builtin_cmd
 ```
 int builtin_cmd(char **argv) 
