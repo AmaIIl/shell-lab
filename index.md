@@ -105,7 +105,6 @@ int main(int argc, char **argv)
     exit(0); /* control never reaches here */
 }
 ```
-在main函数中主要是对于命令行的解析、对ctrl-c/z的处理以及初始化job列表等操作
 
 ## eval
 ```
@@ -144,4 +143,25 @@ void eval(char *cmdline)
     return;
 }
 ```
-csapp公开课上给出的eval函数原型，但是其中并没有回收后台进程的操作
+csapp书上的p525页给出的eval函数原型，但是其中并没有回收后台进程的操作，
+
+## builtin_cmd
+```
+int builtin_cmd(char **argv) 
+{
+    if (!strcmp(argv[0], "quit"))
+        exit(0);
+    if (!strcmp(argv[0], "&"))
+        return 1;
+    if (!strcmp(argv[0], "jobs"))
+        listjobs(jobs);
+        return 1;
+    if (!strcmp(argv[0], "bg")|!strcmp(argv[0], "bg"))
+        do_bgfg(argv);
+        return 1;
+    return 0;     /* not a builtin command */
+}
+```
+同csapp书上给出的builtin_cmd函数的原型加以修改后得到的，使其对于内置命令quit、jobs、bg与fg能进行相应的处理。
+
+##
