@@ -21,6 +21,12 @@ pid_t在types.h中被定义为int
 init进程的pid为1，是所有进程的祖先，负责回收僵尸进程
 一个进程可以调用waitpid函数来等待他的子进程终止或停止
 fork调用一次返回两次，execve调用一次不返回
+
+SIGINT： 通知前台进程终止进程(Ctrl+C)
+SIGQUIT：与SIGINT类似，但是由QUIT字符控制(Ctrl-\)，进程在收到SIGQUIT信号时会产生core文件
+SIGTSTP：停止进程的运行(Ctrl+Z)
+SIGCHLD：父进程回收子进程的信号
+
 int sigemptyset(sigset_t *set): 信号集初始化为空
 int sigfillset(sigset_t *set)：把信号集初始化包含所有已定义的信号
 int sigaddset(sigset_t *set, int signo)：把信号signo添加到信号集set中，成功时返回0，失败时返回-1
